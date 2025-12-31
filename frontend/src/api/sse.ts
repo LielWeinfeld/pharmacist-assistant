@@ -2,7 +2,7 @@ export type SSEEvent = "delta" | "done" | "error" | "ping" | "message" | "tool_c
 
 export type SSEFrame = {
   event: SSEEvent;
-  data: string; // raw data after "data:"
+  data: string;
 };
 
 export function parseSSEFrames(buffer: string): { frames: SSEFrame[]; rest: string } {

@@ -1,4 +1,3 @@
-// src/api/chat.ts
 import type { OpenAIMessage } from "../types/chat";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
@@ -12,10 +11,6 @@ type Handlers = {
   onError: (err: Error) => void;
 };
 
-/**
- * Streams SSE from /api/chat/stream.
- * Returns an AbortController so the caller can cancel in-flight requests.
- */
 export function streamChat(messages: OpenAIMessage[], handlers: Handlers) {
   const controller = new AbortController();
 
@@ -44,7 +39,6 @@ export function streamChat(messages: OpenAIMessage[], handlers: Handlers) {
 
             buffer += decoder.decode(value, { stream: true });
 
-            // SSE events are separated by a blank line
             const parts = buffer.split("\n\n");
             buffer = parts.pop() ?? "";
 

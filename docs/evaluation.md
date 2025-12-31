@@ -1,16 +1,10 @@
 # Agent Evaluation Plan
 
-This document describes how the agent’s quality, safety, correctness, and performance
-are evaluated. The goal is to ensure the agent behaves like a professional pharmacist
-assistant: factual, safe, deterministic, and user-friendly.
-
----
-
 ## Evaluation Goals
 
 The agent is evaluated on the following high-level goals:
 
-1. **Factual correctness** — All medication and stock information must match the database.
+1. **Factual correctness** — All medication and stock information must match the database and the package leaflet.
 2. **Safety & compliance** — The agent must not provide medical advice, diagnosis, or treatment recommendations.
 3. **Hallucination prevention** — The agent must not invent medications, availability, or quantities.
 4. **User experience** — Responses should be clear, concise, and streamed progressively.
@@ -149,6 +143,3 @@ The agent is considered **production-ready** when it:
 - Never violates medical safety constraints
 - Handles multi-step interactions reliably
 - Provides a responsive, streaming user experience
-
-This evaluation plan combines automated testing, manual review,
-and UX validation to ensure consistent, safe, and correct behavior.

@@ -41,7 +41,7 @@ vi.mock("../utils/guardrails", () => ({
 /* ---------------- helpers ---------------- */
 
 async function makeApp() {
-  const { default: chatRouter } = await import("./chat"); // ✅ אחרי mocks
+  const { default: chatRouter } = await import("./chat");
 
   const app = express();
   app.use(express.json({ limit: "1mb" }));
@@ -66,7 +66,7 @@ function extractStockData(messages: OpenAIMessage[]) {
 
   const txt = String(sysMsg.content);
   const idx = txt.indexOf("STOCK_DATA:");
-  const json = txt.slice(idx + "STOCK_DATA:".length).trim(); // כולל ה-\n שאחריו
+  const json = txt.slice(idx + "STOCK_DATA:".length).trim();
 
   return JSON.parse(json) as {
     medication: {
@@ -124,7 +124,7 @@ describe("Chat /stream – requirements", () => {
     const med = medications[0];
     expect(med).toBeDefined();
 
-    const store = stores.find(s => s.storeNumber === "102")!; // Dizengoff
+    const store = stores.find(s => s.storeNumber === "102")!;
 
     const question = `Is ${med.name} available in dizengoff? stock`;
 

@@ -12,7 +12,20 @@ export type Medication = {
   activeIngredient: string;
   prescriptionRequired: boolean;
   labelUsage: string;
-  stockByStore: Record<string, number>; // key isstoreNumber string
+  stockByStore: Record<string, number>; // key is storeNumber as a string
+};
+
+export type User = {
+  id: string;
+  fullName: string;
+  locale: "he" | "en";
+  ageGroup: "child" | "adult" | "senior";
+  memberId: string;
+};
+
+export type MedicationMatch = {
+  medication: Medication;
+  matchedBy: "alias" | "name" | "ingredient";
 };
 
 export const stores: Store[] = [
@@ -67,7 +80,18 @@ export const medications: Medication[] = [
   },
 ];
 
-
+export const users: User[] = [
+  { id: "u-1", fullName: "Noa Levi", locale: "he", ageGroup: "adult", memberId: "M-1001" },
+  { id: "u-2", fullName: "Daniel Cohen", locale: "he", ageGroup: "adult", memberId: "M-1002" },
+  { id: "u-3", fullName: "Maya Rosen", locale: "he", ageGroup: "adult", memberId: "M-1003" },
+  { id: "u-4", fullName: "Yuval Ben-Ami", locale: "he", ageGroup: "adult", memberId: "M-1004" },
+  { id: "u-5", fullName: "Tamar Shani", locale: "he", ageGroup: "senior", memberId: "M-1005" },
+  { id: "u-6", fullName: "John Smith", locale: "en", ageGroup: "adult", memberId: "M-2001" },
+  { id: "u-7", fullName: "Emily Johnson", locale: "en", ageGroup: "adult", memberId: "M-2002" },
+  { id: "u-8", fullName: "Michael Brown", locale: "en", ageGroup: "senior", memberId: "M-2003" },
+  { id: "u-9", fullName: "Sophia Davis", locale: "en", ageGroup: "adult", memberId: "M-2004" },
+  { id: "u-10", fullName: "Liam Wilson", locale: "en", ageGroup: "child", memberId: "M-2005" },
+];
 
 // ------ Helpers handling data from the DB ------ //
 function normalize(s: string): string {
@@ -85,9 +109,8 @@ export function findMedicationLoose(text: string): Medication | null {
   if (t.includes("נורופן")) return medications.find(m => m.name.toLowerCase() === "nurofen") ?? null;
   if (t.includes("אוגמנטין")) return medications.find(m => m.name.toLowerCase() === "augmentin") ?? null;
   if (t.includes("זירטק") || t.includes("זירתק")) return medications.find(m => m.name.toLowerCase() === "zyrtec") ?? null;
-  if (t.includes("אקמול") || t.includes("פרצטמול") || t.includes("פאראצטמול")) {
-    return medications.find(m => m.name.toLowerCase() === "paracetamol") ?? null;
-  }
+  if (t.includes("אקמול") || t.includes("פרצטמול") || t.includes("פאראצטמול")) return medications.find(m => m.name.toLowerCase() === "paracetamol") ?? null;
+  
 
   // English name match
   for (const m of medications) {
@@ -101,6 +124,50 @@ export function findMedicationLoose(text: string): Medication | null {
   }
   return null;
 }
+
+export function resolveMedicationLoose(text: string): MedicationMatch | null {
+  const t = normalize(text);
+
+  // Hebrew aliases
+  if (t.includes("אדוויל") || t.includes("אדויל")) {
+    const m = medications.find(m => m.name.toLowerCase() === "advil");
+    return m ? { medication: m, matchedBy: "alias" } : null;
+  }
+  if (t.includes("נורופן")) {
+    const m = medications.find(m => m.name.toLowerCase() === "nurofen");
+    return m ? { medication: m, matchedBy: "alias" } : null;
+  }
+  if (t.includes("אוגמנטין")) {
+    const m = medications.find(m => m.name.toLowerCase() === "augmentin");
+    return m ? { medication: m, matchedBy: "alias" } : null;
+  }
+  if (t.includes("זירטק") || t.includes("זירתק")) {
+    const m = medications.find(m => m.name.toLowerCase() === "zyrtec");
+    return m ? { medication: m, matchedBy: "alias" } : null;
+  }
+  if (t.includes("אקמול") || t.includes("פרצטמול") || t.includes("פאראצטמול")) {
+    const m = medications.find(m => m.name.toLowerCase() === "paracetamol");
+    return m ? { medication: m, matchedBy: "alias" } : null;
+  }
+
+  // English name match
+  for (const m of medications) {
+    if (t.includes(m.name.toLowerCase())) {
+      return { medication: m, matchedBy: "name" };
+    }
+  }
+
+  // Active ingredient match
+  for (const m of medications) {
+    const ai = normalize(m.activeIngredient);
+    if (ai && t.includes(ai)) {
+      return { medication: m, matchedBy: "ingredient" };
+    }
+  }
+
+  return null;
+}
+
 
 export function findStoreLoose(text: string): Store | null {
   const t = normalize(text);
@@ -121,4 +188,9 @@ export function findStoreLoose(text: string): Store | null {
 export function isAllStoresRequest(text: string): boolean {
   const t = normalize(text);
   return t.includes("כל הסניפים") || t.includes("all stores") || t.includes("every store");
+}
+
+export function getUserByMemberId(memberId: string): User | null {
+  const m = String(memberId ?? "").trim();
+  return users.find(u => u.memberId === m) ?? null;
 }

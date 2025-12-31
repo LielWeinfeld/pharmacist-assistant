@@ -6,18 +6,18 @@ import { streamChat } from "../../api/chat";
 import "./Chat.css";
 
 function detectLocale(text?: string): "he" | "en" {
-  // 1. אם יש טקסט – לפי הטקסט
+  // If text is present, infer language from the text
   if (text) {
     return /[\u0590-\u05FF]/.test(text) ? "he" : "en";
   }
 
-  // 2. אין טקסט → לפי שפת הדפדפן / מערכת
+  // No text → use browser / system language
   if (typeof navigator !== "undefined") {
     const lang = navigator.language || navigator.languages?.[0];
     if (lang?.startsWith("he")) return "he";
   }
 
-  // 3. fallback
+  // fallback
   return "en";
 }
 
@@ -46,7 +46,6 @@ export default function Chat() {
     const trimmed = text.trim();
     if (!trimmed || isLoading) return;
 
-    // Detect locale for THIS request, based on what the user is sending now
     const reqLocale = detectLocale(trimmed);
 
     const userMsg: ChatMessage = {
@@ -62,13 +61,11 @@ export default function Chat() {
       content: "",
     };
 
-    // snapshot model history BEFORE adding loading
     const modelHistory = toOpenAIMessages([...chatMessages, userMsg]);
 
     setIsLoading(true);
     setChatMessages((prev) => [...prev, userMsg, loadingMsg]);
 
-    // --- ADD: UX timers (do NOT cancel the request) ---
     const t3 = window.setTimeout(() => {
       setChatMessages((curr) => {
         const copy = [...curr];
@@ -106,7 +103,6 @@ export default function Chat() {
       window.clearTimeout(t3);
       window.clearTimeout(t10);
     };
-    // --- END ADD ---
 
     let assistantText = "";
 

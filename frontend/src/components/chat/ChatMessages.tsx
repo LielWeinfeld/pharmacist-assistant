@@ -13,12 +13,18 @@ const INTRO_TEXT: Record<Locale, string> = {
   en: "How can I help with medications today?\nI can provide general, factual info about drugs (uses, active ingredients, OTC vs prescription, leaflet directions).",
   he: "היי! איך אפשר לעזור ?\nאני יכול/ה לספק מידע עובדתי על תרופות: שימושים, רכיבים פעילים, מרשם/ללא מרשם והנחיות מהעלון.",
 };
+function detectBrowserLocale(): Locale {
+  const lang = navigator.languages?.[0] ?? navigator.language ?? "he";
+
+  if (lang.startsWith("he")) return "he";
+  return "en";
+}
 
 export default function ChatMessages({ chatMessages }: Props) {
   const isEmpty = chatMessages.length === 0;
 
-  // start language (UI language). simplest: Hebrew by default.
-  const locale: Locale = "he";
+  // start language is the browsers language
+  const locale: Locale = detectBrowserLocale();
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 

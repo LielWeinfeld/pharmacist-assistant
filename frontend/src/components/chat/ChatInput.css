@@ -6,7 +6,6 @@
   background: #fff;
 }
 
-/* ===== Input ===== */
 .chat-input {
   flex: 1;
   height: 46px;
@@ -23,7 +22,6 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
 }
 
-/* RTL / LTR רק לטקסט */
 .chat-input.rtl {
   direction: rtl;
   text-align: right;
@@ -34,7 +32,6 @@
   text-align: left;
 }
 
-/* ===== Button ===== */
 .send-button {
   height: 46px;
   min-width: 90px;

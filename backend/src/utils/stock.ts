@@ -1,5 +1,5 @@
 import type { Medication, Store } from "../db/synthetic";
-import { stores, findMedicationLoose, findStoreLoose, isAllStoresRequest } from "../db/synthetic";
+import { stores, resolveMedicationLoose, findStoreLoose, isAllStoresRequest } from "../db/synthetic";
 
 export type Lang = "he" | "en";
 
@@ -29,7 +29,7 @@ export function isStockQuestion(userText: string): boolean {
     t.includes("available") ||
     t.includes("availability") ||
     t.includes("do you have") ||
-    t.includes("at the store")||
+    t.includes("at the store") ||
     t.includes("avaliable");
 
   return he || en;
@@ -47,7 +47,6 @@ export function isAllStoresFollowup(text: string): boolean {
     t.includes("anywhere")
   );
 }
-
 
 export type InStockStore = {
   storeNumber: string;
@@ -88,8 +87,10 @@ export type AvailabilityResult =
     };
 
 export function checkAvailability(userText: string): AvailabilityResult {
-  const medication = findMedicationLoose(userText);
-  if (!medication) return { ok: false, reason: "MED_NOT_FOUND" };
+  const resolved = resolveMedicationLoose(userText);
+  if (!resolved) return { ok: false, reason: "MED_NOT_FOUND" };
+
+  const medication = resolved.medication;
 
   const requestedStore = findStoreLoose(userText);
   if (!requestedStore) return { ok: false, reason: "STORE_NOT_FOUND" };

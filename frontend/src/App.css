@@ -1,0 +1,58 @@
+/* src/App.css */
+
+.app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+}
+
+.appHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #ffffff;
+  height: 64px;
+  display: flex;
+  align-items: center;
+}
+.appHeaderInner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 16px;
+
+  display: grid;
+  grid-template-columns: 48px 1fr 48px; /* ⬅️ יותר מקום לרובוט */
+  align-items: center;
+}
+.appRobot {
+  width: 44px; /* ⬅️ היה 34 */
+  height: 44px;
+  border-radius: 999px;
+  background: #ffffff;
+  object-fit: cover;
+}
+
+.appTitle {
+  margin: 5px;
+  line-height: 1;
+  text-align: center;
+  font-size: clamp(22px, 4vw, 34px);
+  font-weight: 900;
+  color: #07165a;
+  text-decoration: underline;
+  text-decoration-style: double;
+}
+
+.appHeaderSpacer {
+  width: 34px;
+  height: 34px;
+}
+
+.appMain {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 16px 18px;
+  overflow: hidden;
+}

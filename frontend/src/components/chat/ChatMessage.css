@@ -1,0 +1,61 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.rowBot {
+  justify-content: flex-start;
+}
+
+.rowUser {
+  justify-content: flex-end;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.bubble {
+  max-width: min(640px, 78%);
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e6eaf2;
+  background: #ffffff;
+
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #07165a;
+  text-align: start; /* RTL->right, LTR->left */
+  unicode-bidi: plaintext;
+
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: min(640px, 78%);
+}
+
+.bubbleUser {
+  background: #eef5ff;
+  border-color: #d9e7ff;
+}
+
+.line {
+  margin: 0;
+  white-space: pre-wrap;
+  text-align: start;
+  unicode-bidi: plaintext;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.msgRow {
+  align-items: flex-start;
+}
+
+.msgAvatar {
+  margin-top: 2px; /* טיפה יישור לגובה הבועה */
+}

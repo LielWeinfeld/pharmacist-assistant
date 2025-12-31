@@ -1,31 +1,46 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Node
-node_modules
-dist
-dist-ssr
-
-#Env files
+# =========================
+# Environment / Secrets
+# =========================
 .env
 .env.*
 *.local
-backend/.env
 
+# =========================
+# Dependencies
+# =========================
+node_modules/
 
-# Editor directories and files
+# =========================
+# Build outputs
+# =========================
+dist/
+dist-ssr/
+build/
+
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# =========================
+# Docker
+# =========================
+**/.dockerignore

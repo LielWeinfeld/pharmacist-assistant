@@ -59,3 +59,6 @@
 .msgAvatar {
   margin-top: 2px;
 }
+.toolBubble {
+  opacity: 0.85;
+}

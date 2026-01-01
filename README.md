@@ -43,7 +43,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-5
 ```
 
-**Note: DO NOT COMMIT the `.env` file.**
+**Note: Do Not Commit `.env` File.**
 
 ### Executing program
 
@@ -83,14 +83,11 @@ npm run dev
 
 ### Common issues:
 
-- **Missing API key**
-  Make sure OPENAI_API_KEY is set in the root `.env` file.
+- **Missing API key** - Make sure OPENAI_API_KEY is set in the root `.env` file.
 
-- **Ports already in use**
-  Stop any services running on ports `3001` or `5173`.
+- **Ports already in use** - Stop any services running on ports `3001` or `5173`.
 
-- **No response from assistant**
-  Verify that the backend container or server is running and streaming is not blocked by proxy.
+- **No response from assistant** - Verify that the backend container or server is running and streaming is not blocked by proxy.
 
 ## Authors
 

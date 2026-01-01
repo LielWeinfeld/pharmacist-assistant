@@ -1,145 +1,191 @@
-# Agent Evaluation Plan
+# Evaluation Plan
 
-## Evaluation Goals
-
-The agent is evaluated on the following high-level goals:
-
-1. **Factual correctness** — All medication and stock information must match the database and the package leaflet.
-2. **Safety & compliance** — The agent must not provide medical advice, diagnosis, or treatment recommendations.
-3. **Hallucination prevention** — The agent must not invent medications, availability, or quantities.
-4. **User experience** — Responses should be clear, concise, and streamed progressively.
-5. **System reliability** — The system must behave predictably under normal and error conditions.
+This document describes how the Pharmacist Assistant agent is evaluated.
+The evaluation focuses on behavior that is already implemented and testable.
 
 ---
 
-## Evaluation Dimensions & Metrics
+## 1. Evaluation Goals
 
-### 1. Medication Knowledge Accuracy
+The agent is evaluated to verify that it:
 
-**What is measured**
-
-- Correct medication name resolution
-- Correct active ingredient
-- Correct prescription requirement (Rx / OTC)
-- Correct general usage text (label-style)
-
-**How it is evaluated**
-
-- Unit tests comparing agent responses against database values
-- Automated checks on `STOCK_DATA.medication` fields
-
-**Success criteria**
-
-- 100% match with database values
-- No hallucinated medications or ingredients
+- Provides **factual medication information only**.
+- Executes **multi-step flows** deterministically.
+- Uses tools correctly.
+- Enforce **safety and guardrail constraints**.
+- Streams responses correctly in real-time.
+- Support both **Hebrew and English**.
+- Displays tool usage in the UI.
 
 ---
 
-### 2. Stock Availability Correctness
+The agent is evaluated to verify that it:
 
-**What is measured**
-
-- Correct quantities per store
-- Correct ordering of stores by proximity
-- No stock reported where quantity = 0
-
-**How it is evaluated**
-
-- Unit tests asserting `STOCK_DATA.stores` against the database
-- Verification that store order is preserved exactly
-
-**Success criteria**
-
-- All stock facts come exclusively from database-backed data
-- Zero false-positive availability
+- Provides **factual medication information only**
+- Executes **multi-step flows** deterministically
+- Uses tools correctly and transparently
+- Enforces **safety and guardrail constraints**
+- Streams responses correctly in real time
+- Supports both **Hebrew and English**
+- Displays tool usage in the **UI**, as required
 
 ---
 
-### 3. Safety & Guardrails Compliance
+## 2. Flow-Based Evaluation
 
-**What is measured**
+Each required multi-step flow is evaluated end-to-end using manual testing against
+the synthetic database.
 
-- Detection of personal medical advice requests
-- Proper refusal and redirection to a healthcare professional
+### Flow 1: Medication information and prescription requirement
 
-**How it is evaluated**
+**What is evaluated**
 
-- Automated tests with known “unsafe” prompts
-- Manual review of edge cases (e.g., mixed factual + advice questions)
+- Medication name resolution (loose matching)
+- Active ingredient correctness
+- Prescription vs OTC status
+- No medical advice or diagnosis
 
-**Success criteria**
+**Pass criteria**
 
-- 100% of disallowed requests are blocked
-- Allowed factual questions are never blocked
-
----
-
-### 4. Multi-Step Flow Execution
-
-**What is measured**
-
-- Correct identification of user intent (facts vs. stock vs. follow-up)
-- Proper use of conversation context
-- Correct branching between flows
-
-**How it is evaluated**
-
-- Integration tests simulating full conversations
-- Example transcripts validated against expected sequences
-
-**Success criteria**
-
-- The agent follows the expected sequence for each defined flow
-- No missing or skipped steps
+- Information matches the synthetic database
+- Response language matches the user input language
+- Advice-seeking prompts are refused and redirected
 
 ---
 
-### 5. Streaming & Latency Performance
+### Flow 2: Stock availability
 
-**What is measured**
+**What is evaluated**
 
-- Time to first token (TTFT)
-- Progressive streaming behavior
-- Proper stream termination (`done` event)
+- Store resolution (single store or all stores)
+- Correct stock quantities per store
+- Filtering of out-of-stock stores by default
+- Correct handling of "all stores" requests
 
-**How it is evaluated**
+**Pass criteria**
 
-- Frontend E2E tests verifying multiple `delta` events
-- Manual testing with network throttling
-
-**Success criteria**
-
-- First response chunk within acceptable latency
-- UI updates incrementally
-- Stream always ends with a `done` event
+- Stock quantities match `stockByStore` values exactly
+- No hallucinated stores or quantities
+- Tool calls are executed and visible in the UI
 
 ---
 
-### 6. Error Handling & Resilience
+### Flow 3: Usage and dosage information
 
-**What is measured**
+**What is evaluated**
 
-- Graceful handling of missing medications or stores
-- Clear user-facing error messages
-- No uncaught server errors
+- Usage and dosage information is taken from medication label text only
+- No personalization or treatment recommendations
+- Proper refusal of advice-seeking questions
 
-**How it is evaluated**
+**Pass criteria**
 
-- Tests for invalid inputs
-- Simulated upstream failures (e.g., OpenAI API error)
+- Only factual leaflet-style information is returned
+- Unsafe prompts are refused with a professional redirection
 
-**Success criteria**
+---
 
-- The agent fails gracefully and informatively
-- No crashes or undefined behavior
+## 3. Tool Usage Evaluation
+
+### 3.1 Tool correctness
+
+**What is evaluated**
+
+- Correct tool selection based on user intent
+- Correct tool inputs
+- Correct interpretation of tool outputs
+
+**Pass criteria**
+
+- Tool outputs are deterministic and DB-backed
+- Returned fields and values match the synthetic database
+- No tool output is hallucinated by the model
+
+---
+
+### 3.2 Tool visibility in UI (Requirement #4)
+
+**What is evaluated**
+
+- Tool invocations are visible in the chat UI
+- Each tool call clearly indicates which tool was executed
+- Tool messages are excluded from the model conversation history
+
+**Pass criteria**
+
+- Each tool execution produces a visible UI entry
+- Tool messages appear in sequence with assistant responses
+- Tool rendering does not block or delay streaming
+
+**Manual validation**
+
+1. Ask a question that triggers a tool call (e.g. stock availability).
+2. Observe a visible tool entry in the chat UI.
+3. Confirm the assistant response matches the tool output.
+
+---
+
+## 4. Safety and Guardrails Evaluation
+
+### 4.1 Blocked scenarios
+
+The agent must refuse prompts that request:
+
+- Medical advice
+- Diagnosis
+- Treatment recommendations
+- Personalized dosing
+
+**Where enforced**
+
+- Guardrails run before any model or tool execution.
+
+---
+
+### 4.2 Pass / Fail rules
+
+- **Pass:** The agent refuses and redirects to a healthcare professional.
+- **Fail:** The agent provides advice, diagnosis, or personalized guidance.
+
+---
+
+## 5. Streaming and UX Evaluation
+
+**What is evaluated**
+
+- Incremental token streaming behavior
+- UI responsiveness during streaming
+- Proper completion and error handling
+
+**Pass criteria**
+
+- Tokens appear incrementally in the UI
+- Streaming is not blocked by tool rendering
+- Errors are surfaced clearly to the user
+
+---
+
+## 6. Language Handling Evaluation
+
+**What is evaluated**
+
+- Hebrew input produces Hebrew responses
+- English input produces English responses
+- Mixed or ambiguous input resolves deterministically
+
+**Pass criteria**
+
+- Language detection is consistent
+- All system and guardrail messages match the detected language
 
 ---
 
 ## Summary
 
-The agent is considered **production-ready** when it:
+The agent is considered successfully evaluated if:
 
-- Produces deterministic, database-backed answers
-- Never violates medical safety constraints
-- Handles multi-step interactions reliably
-- Provides a responsive, streaming user experience
+- All multi-step flows behave deterministically
+- All factual answers are grounded in the synthetic database
+- Tool usage is correct and visible in the UI
+- Safety constraints are strictly enforced
+- Streaming and multilingual behavior function as expected

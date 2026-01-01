@@ -13,7 +13,7 @@
 
 **Parameters (JSON schema):**
 
-- `query` _(string, required)_ — medication name/brand/alias (e.g., `"אקמול"`, `"Advil"`, `"Paracetamol"`)
+- `query` _(string, required)_ - medication name/brand/alias (e.g., `"אקמול"`, `"Advil"`, `"Paracetamol"`)
 
 **Example input:**
 
@@ -25,14 +25,14 @@
 
 **Success output:**
 
-- `ok` _(boolean)_ — `true`
+- `ok` _(boolean)_ - `true`
 - `medication` _(object)_
   - `id` _(string)_
   - `name` _(string)_
   - `activeIngredient` _(string)_
   - `prescriptionRequired` _(boolean)_
-  - `labelUsage` _(string)_ — leaflet-style usage info (general, non-personalized)
-- `matchedBy` _(string)_ — e.g. `"alias" | "name" | "ingredient" | "context"`
+  - `labelUsage` _(string)_ - leaflet-style usage info (general, non-personalized)
+- `matchedBy` _(string)_ - e.g. `"alias" | "name" | "ingredient" | "context"`
 
 **Example success output:**
 
@@ -66,7 +66,7 @@
 ### 5) Fallback behavior
 
 - If `resolveMedicationLoose(query)` fails, fallback to `findMedicationFromContext(messages)` to support follow-ups like:  
-  “And does it require a prescription?” after the user already mentioned the drug earlier.
+  "And does it require a prescription?" after the user already mentioned the drug earlier.
 - If both fail → `MED_NOT_FOUND`.
 
 ---
@@ -80,7 +80,7 @@
 
 ### 2) Inputs (parameters, types)
 
-- `query` _(string, required)_ — medication name/brand/alias.
+- `query` _(string, required)_ - medication name/brand/alias.
 
 **Example input:**
 
@@ -92,7 +92,7 @@
 
 **Success output:**
 
-- `ok` _(boolean)_ — `true`
+- `ok` _(boolean)_ - `true`
 - `medication` _(object)_: `{ id: string, name: string }`
 - `prescriptionRequired` _(boolean)_
 
@@ -132,15 +132,15 @@ Supports:
 
 - Stock in a **specific branch** (if requested)
 - If requested branch is **out of stock** → return **alternative branches with stock sorted by distance**
-- If requested city/location is **not served** → return “We don’t have stores in <city>.”
+- If requested city/location is **not served** → return "We don't have stores in <city>."
 
 ### 2) Inputs (parameters, types)
 
 **Parameters:**
 
-- `medication_query` _(string, required)_ — medication name/brand/alias.
-- `store_query` _(string | null, optional)_ — store hint (e.g., `"יפו"`, `"Jaffa"`, `"101"`, `"Ramat Aviv"`).
-- `show_all_stores` _(boolean, optional, default false)_ — if true, include all stores (even `qty=0`).
+- `medication_query` _(string, required)_ - medication name/brand/alias.
+- `store_query` _(string | null, optional)_ - store hint (e.g., `"יפו"`, `"Jaffa"`, `"101"`, `"Ramat Aviv"`).
+- `show_all_stores` _(boolean, optional, default false)_ - if true, include all stores (even `qty=0`).
 
 **Example input (specific branch):**
 
@@ -156,16 +156,16 @@ Supports:
 
 **Success output:**
 
-- `ok` _(boolean)_ — `true`
+- `ok` _(boolean)_ - `true`
 - `medication` _(object)_
   - `id` _(string)_
   - `name` _(string)_
   - `activeIngredient` _(string)_
   - `prescriptionRequired` _(boolean)_
 - `requestedStore` _(object | null)_
-  - `storeLabel` _(string)_ — e.g. `"Jaffa, Tel Aviv"`
+  - `storeLabel` _(string)_ - e.g. `"Jaffa, Tel Aviv"`
   - `qty` _(number)_
-- `stores` _(array)_ — ordered by distance (closest first)
+- `stores` _(array)_ - ordered by distance (closest first)
   - item:
     - `storeLabel` _(string)_
     - `qty` _(number)_
@@ -205,7 +205,7 @@ Supports:
 - `ok: false`
 - `reason: "CITY_NOT_SERVED"`
 - `city` _(string)_
-- `message` _(string)_ — e.g., “We don’t have stores in NYC.”
+- `message` _(string)_ - e.g., "We don't have stores in NYC."
 
 **Example:**
 
@@ -214,15 +214,50 @@ Supports:
   "ok": false,
   "reason": "CITY_NOT_SERVED",
   "city": "NYC",
-  "message": "We don’t have stores in NYC."
+  "message": " stores in NYC."
 }
 ```
 
 ### 5) Fallback behavior
 
-- If `store_query` is missing/empty, infer store from the **user message** (e.g., “ביפו”).
-- **Hard override:** “יפו/Jaffa” always maps to store `104` (prevents “יפו, תל אביב” city confusion).
+- If `store_query` is missing/empty, infer store from the **user message** (e.g., "ביפו").
+- **Hard override:** "יפו/Jaffa" always maps to store `104` (prevents "יפו, תל אביב" city confusion).
 - If no store specified:
   - Return `stores` list filtered to `qty > 0` by default, sorted by distance.
 - If requested store exists but `qty == 0`:
   - Return alternatives with stock (sorted), excluding the requested store label.
+
+---
+
+## Tool 4 - UI Tool Call Visibility
+
+**Purpose**  
+Ensure that every tool invocation performed by the agent is **visibly presented in the chat UI**, as required by the UI specification.
+
+**Inputs**
+
+- `name` (string): Tool name (e.g. `get_medication_by_name`)
+- `args` (object, optional): Tool input parameters
+- `result` (object, optional): Tool execution result
+
+**Output**
+
+- A UI-only chat message with:
+  - `role: "tool"`
+  - `content`: tool name
+  - `payload`: raw tool event data (optional)
+
+**Behavior**
+
+- Tool call messages are appended to the chat timeline in real time.
+- Tool messages are excluded from the model conversation history.
+- Tool payload rendering is optional and may be collapsed or omitted for performance.
+
+**Error handling**
+
+- Invalid or malformed tool events are ignored.
+- Tool UI rendering failures do not interrupt assistant streaming.
+
+**Fallback**
+
+- If detailed payload rendering is disabled, the UI still displays the tool name.

@@ -1,9 +1,10 @@
 export type Role = "user" | "assistant" | "loading";
 
-export type ChatMessage = {
+export type ChatMessage =| {
   id: string;
-  role: Role;
-  content: string;
+  role: Role | "tool";
+  content: string;// ← toolName when role === "tool"
+  payload?:unknown;
 };
 
 export type OpenAIMessage = {

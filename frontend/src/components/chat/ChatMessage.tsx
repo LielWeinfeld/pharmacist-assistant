@@ -10,6 +10,10 @@ type Props = { message: MessageType };
 export default function ChatMessage({ message }: Props) {
   const isUser = message.role === "user";
 
+  if (message.role === "tool") {
+    return;
+  }
+
   return (
     <div className={`row ${isUser ? "rowUser" : "rowBot"}`}>
       {!isUser && <img className="avatar" src={Robot} alt="bot" />}

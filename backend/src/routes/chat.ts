@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 
 import type { OpenAIMessage, SendChatRequest } from "../types/chat";
-import { sseInit, sseDelta, sseDone, sseError } from "../utils/sse";
+import { sseInit, sseDelta, sseDone, sseError, sseEvent } from "../utils/sse";
 import { runGuardrailsOrNull } from "../utils/guardrails";
 
 import { streamOpenAIText, type FunctionToolDef } from "../services/openaiStream";
@@ -10,9 +10,6 @@ import { stores, findStoreLoose, resolveMedicationLoose } from "../db/synthetic"
 import {
   buildStockData,
   findMedicationFromContext,
-  extractMentionedCity,
-  citiesSummaryHe,
-  citiesSummaryEn,
 } from "../utils/stockFlow";
 import { isStockQuestion, type Lang } from "../utils/stock";
 
@@ -41,6 +38,20 @@ function getLastUserText(messages: OpenAIMessage[]): string {
   return "";
 }
 
+/**
+ * Canonical city resolver
+ * Maps user input → DB city value
+ */
+function canonicalizeCity(input: string): string | null {
+  const t = String(input ?? "").trim().toLowerCase();
+
+  if (["tel aviv", "tel-aviv", "telaviv", "tlv", "תל אביב"].includes(t)) {
+    return "תל אביב";
+  }
+
+  return null;
+}
+
 function sseCustom(res: Response, eventName: string, payload: unknown) {
   res.write(`event: ${eventName}\n`);
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
@@ -55,11 +66,11 @@ const TOOLS: FunctionToolDef[] = [
     type: "function",
     name: "get_medication_info",
     description:
-      "Lookup factual medication information in the pharmacy database by name/alias. Returns active ingredient, Rx requirement, and leaflet-style usage.",
+      "Lookup factual medication information in the pharmacy database by name/alias.",
     parameters: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Medication name/brand/alias (Hebrew or English)." },
+        query: { type: "string" },
       },
       required: ["query"],
       additionalProperties: false,
@@ -69,11 +80,11 @@ const TOOLS: FunctionToolDef[] = [
     type: "function",
     name: "check_prescription_requirement",
     description:
-      "Check whether a medication requires a prescription (Rx) or is OTC, based on the pharmacy database.",
+      "Check whether a medication requires a prescription (Rx) or is OTC.",
     parameters: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Medication name/brand/alias (Hebrew or English)." },
+        query: { type: "string" },
       },
       required: ["query"],
       additionalProperties: false,
@@ -83,24 +94,13 @@ const TOOLS: FunctionToolDef[] = [
     type: "function",
     name: "check_stock",
     description:
-      "Check inventory for a medication. If a specific store is requested and out of stock, returns alternative branches with stock sorted by distance.",
+      "Check inventory for a medication in a specific store or city.",
     parameters: {
       type: "object",
       properties: {
-        medication_query: {
-          type: "string",
-          description: "Medication name/brand/alias (Hebrew or English).",
-        },
-        store_query: {
-          type: ["string", "null"],
-          description:
-            "Optional store hint (store number or location like 'יפו', 'דיזנגוף', 'Jaffa'). If null, tool tries to infer from the user message.",
-        },
-        show_all_stores: {
-          type: "boolean",
-          description:
-            "If true, return all stores (including out of stock). Otherwise return only stores with qty>0 (except requested store, which is always returned).",
-        },
+        medication_query: { type: "string" },
+        store_query: { type: ["string", "null"] },
+        show_all_stores: { type: "boolean" },
       },
       required: ["medication_query"],
       additionalProperties: false,
@@ -121,26 +121,25 @@ router.post("/stream", async (req: Request, res: Response) => {
     const userText = getLastUserText(messages);
     const lang: Lang = detectLang(userText);
 
-    // Guardrails first
+    // Guardrails
     const guardrailMsg = runGuardrailsOrNull(userText);
     if (guardrailMsg) {
       sseDelta(res, guardrailMsg);
       return sseDone(res);
     }
 
-
     const forceStockTool = isStockQuestion(userText);
 
     const toolExecutor = async (name: string, args: unknown) => {
-      const a = (typeof args === "object" && args !== null ? (args as any) : {}) as any;
+      const a = (typeof args === "object" && args !== null ? args : {}) as any;
 
+      /* ================= get_medication_info ================= */
       if (name === "get_medication_info") {
-        const q = String(a.query ?? userText).trim();
+        const q = String(a.query ?? userText);
         const resolved = resolveMedicationLoose(q);
         const med = resolved?.medication ?? findMedicationFromContext(messages);
-        if (!med) {
-          return { ok: false, reason: "MED_NOT_FOUND" as const };
-        }
+        if (!med) return { ok: false, reason: "MED_NOT_FOUND" };
+
         return {
           ok: true,
           medication: {
@@ -150,71 +149,71 @@ router.post("/stream", async (req: Request, res: Response) => {
             prescriptionRequired: med.prescriptionRequired,
             labelUsage: med.labelUsage,
           },
-          matchedBy: resolved?.matchedBy ?? "context",
         };
       }
 
+      /* ================= check_prescription_requirement ================= */
       if (name === "check_prescription_requirement") {
-        const q = String(a.query ?? userText).trim();
+        const q = String(a.query ?? userText);
         const resolved = resolveMedicationLoose(q);
         const med = resolved?.medication ?? findMedicationFromContext(messages);
-        if (!med) {
-          return { ok: false, reason: "MED_NOT_FOUND" as const };
-        }
+        if (!med) return { ok: false, reason: "MED_NOT_FOUND" };
+
         return {
           ok: true,
           medication: { id: med.id, name: med.name },
-          prescriptionRequired: Boolean(med.prescriptionRequired),
+          prescriptionRequired: med.prescriptionRequired,
         };
       }
 
+      /* ================= check_stock ================= */
       if (name === "check_stock") {
-        const medQ = String(a.medication_query ?? userText).trim();
-        const storeQ =
-          a.store_query === null || a.store_query === undefined ? "" : String(a.store_query);
-        const showAll = Boolean(a.show_all_stores ?? false);
+        const medQ = String(a.medication_query ?? userText);
+        const storeQ = String(a.store_query ?? "");
+        const showAll = Boolean(a.show_all_stores);
 
         const resolved = resolveMedicationLoose(medQ);
         const med = resolved?.medication ?? findMedicationFromContext(messages);
-        if (!med) return { ok: false, reason: "MED_NOT_FOUND" as const };
+        if (!med) return { ok: false, reason: "MED_NOT_FOUND" };
 
-        let requestedStore = (storeQ ? findStoreLoose(storeQ) : null) ?? findStoreLoose(userText);
+        // Try explicit store
+        let requestedStore =
+          (storeQ && findStoreLoose(storeQ)) ||
+          findStoreLoose(userText);
 
-        const t = `${storeQ} ${userText}`.toLowerCase();
-        const mentionsJaffa = t.includes("יפו") || t.includes("jaffa") || t.includes("jafa");
-        if (!requestedStore && mentionsJaffa) {
-          requestedStore = stores.find((s) => s.storeNumber === "104") ?? null;
+        // Try city (canonical)
+        if (!requestedStore) {
+          const canonicalCity = canonicalizeCity(storeQ || userText);
+          if (canonicalCity) {
+            requestedStore =
+              stores
+                .filter((s) => s.city === canonicalCity)
+                .sort((a, b) => a.distanceRank - b.distanceRank)[0] ?? null;
+          }
         }
 
-        const allowedCities = Array.from(new Set(stores.map((s) => s.city)));
-        const mentionedCity = extractMentionedCity(userText, allowedCities);
-        if (mentionedCity && !requestedStore) {
-          const allowedLower = allowedCities.map((c) => c.toLowerCase());
-          if (!allowedLower.includes(mentionedCity.toLowerCase())) {
+        // City truly not served
+        if (!requestedStore) {
+          const canonicalCity = canonicalizeCity(storeQ || userText);
+          if (canonicalCity === null) {
             return {
-                ok: false,
-                reason: "CITY_NOT_SERVED",
-                city: mentionedCity,
-                message:
-                  lang === "he"
-                    ? `אין לנו סניפים ב${mentionedCity}. אפשר לבדוק זמינות בערים שבהן יש לנו סניפים.`
-                    : `We don’t have stores in ${mentionedCity}. You can check availability in cities where we operate.`,
-              };
-
-
+              ok: false,
+              reason: "CITY_NOT_SERVED",
+              message:
+                lang === "he"
+                  ? "אין לנו סניפים בעיר שציינת."
+                  : "We don’t have stores in that city.",
+            };
           }
         }
 
         const payload = buildStockData(userText, med, requestedStore, lang);
-
-        if (showAll && payload.meta && payload.meta.showAllStores === false) {
-          payload.meta.showAllStores = true;
-        }
+        if (showAll && payload.meta) payload.meta.showAllStores = true;
 
         return { ok: true, ...payload };
       }
 
-      return { ok: false, reason: "UNKNOWN_TOOL" as const, tool: name };
+      return { ok: false, reason: "UNKNOWN_TOOL" };
     };
 
     await streamOpenAIText({
@@ -222,30 +221,15 @@ router.post("/stream", async (req: Request, res: Response) => {
       tools: TOOLS,
       toolExecutor,
       forcedToolName: forceStockTool ? "check_stock" : undefined,
-
-      // Stream text to UI
-      onTextDelta: (delta) => sseDelta(res, delta),
+      onTextDelta: (d) => sseDelta(res, d),
       onDone: () => sseDone(res),
-      onError: (err) => sseError(res, err.message || "Unknown error"),
-
-      // Show tool calls to UI
-      onToolCall: (call) => {
-        sseCustom(res, "tool_call", {
-          id: call.call_id,
-          name: call.name,
-          input: call.arguments,
-        });
-      },
-      onToolResult: (r) => {
-        sseCustom(res, "tool_result", {
-          id: r.call_id,
-          name: r.name,
-          output: r.output,
-        });
-      },
+      onError: (e) => sseError(res, e.message),
+      onToolCall: (c) =>
+        sseCustom(res, "tool_call", { name: c.name, input: c.arguments }),
+      onToolResult: (r) =>
+        sseCustom(res, "tool_result", { name: r.name, output: r.output }),
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    sseError(res, msg);
+    sseError(res, err instanceof Error ? err.message : "Unknown error");
   }
 });

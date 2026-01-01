@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 import type { ChatMessage, OpenAIMessage } from "../../types/chat";
@@ -6,18 +6,15 @@ import { streamChat } from "../../api/chat";
 import "./Chat.css";
 
 function detectLocale(text?: string): "he" | "en" {
-  // If text is present, infer language from the text
-  if (text) {
+  if (text && text.trim().length > 0) {
     return /[\u0590-\u05FF]/.test(text) ? "he" : "en";
   }
 
-  // No text → use browser / system language
   if (typeof navigator !== "undefined") {
     const lang = navigator.language || navigator.languages?.[0];
-    if (lang?.startsWith("he")) return "he";
+    if (lang?.toLowerCase().startsWith("he")) return "he";
   }
 
-  // fallback
   return "en";
 }
 
@@ -37,16 +34,54 @@ function toOpenAIMessages(uiMessages: ChatMessage[]): OpenAIMessage[] {
 export default function Chat() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [locale, setLocale] = useState<"he" | "en">(() => detectLocale());
 
-  const locale = detectLocale(
-    [...chatMessages].reverse().find((m) => m.role === "user")?.content
-  );
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const t3Ref = useRef<number | null>(null);
+  const t10Ref = useRef<number | null>(null);
+  const mountedRef = useRef(true);
+
+  const clearUXTimers = () => {
+    if (t3Ref.current !== null) window.clearTimeout(t3Ref.current);
+    if (t10Ref.current !== null) window.clearTimeout(t10Ref.current);
+    t3Ref.current = null;
+    t10Ref.current = null;
+  };
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      clearUXTimers();
+      streamAbortRef.current?.abort();
+      streamAbortRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const safeSetChatMessages = (
+    updater: (prev: ChatMessage[]) => ChatMessage[]
+  ) => {
+    if (!mountedRef.current) return;
+    setChatMessages(updater);
+  };
+
+  const safeSetIsLoading = (v: boolean) => {
+    if (!mountedRef.current) return;
+    setIsLoading(v);
+  };
 
   const handleSend = (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || isLoading) return;
+    if (!trimmed) return; // ✅ מאפשר לשלוח גם בזמן loading
+
+    // ✅ abort previous stream to avoid mixed deltas
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    clearUXTimers();
 
     const reqLocale = detectLocale(trimmed);
+    setLocale(reqLocale);
 
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
@@ -63,11 +98,11 @@ export default function Chat() {
 
     const modelHistory = toOpenAIMessages([...chatMessages, userMsg]);
 
-    setIsLoading(true);
-    setChatMessages((prev) => [...prev, userMsg, loadingMsg]);
+    safeSetIsLoading(true);
+    safeSetChatMessages((prev) => [...prev, userMsg, loadingMsg]);
 
-    const t3 = window.setTimeout(() => {
-      setChatMessages((curr) => {
+    t3Ref.current = window.setTimeout(() => {
+      safeSetChatMessages((curr) => {
         const copy = [...curr];
         const idx = copy.findIndex((m) => m.id === assistantId);
         if (idx === -1) return copy;
@@ -81,8 +116,8 @@ export default function Chat() {
       });
     }, 3000);
 
-    const t10 = window.setTimeout(() => {
-      setChatMessages((curr) => {
+    t10Ref.current = window.setTimeout(() => {
+      safeSetChatMessages((curr) => {
         const copy = [...curr];
         const idx = copy.findIndex((m) => m.id === assistantId);
         if (idx === -1) return copy;
@@ -99,20 +134,17 @@ export default function Chat() {
       });
     }, 10000);
 
-    const clearUXTimers = () => {
-      window.clearTimeout(t3);
-      window.clearTimeout(t10);
-    };
-
     let assistantText = "";
 
-    streamChat(modelHistory, {
+    const controller = streamChat(modelHistory, {
       onDelta: (delta) => {
         assistantText += delta;
-        setChatMessages((curr) => {
+
+        safeSetChatMessages((curr) => {
           const copy = [...curr];
           const idx = copy.findIndex((m) => m.id === assistantId);
           if (idx === -1) return copy;
+
           copy[idx] = {
             id: assistantId,
             role: "assistant",
@@ -121,9 +153,14 @@ export default function Chat() {
           return copy;
         });
       },
+
+      onTool: (ev) => {
+        console.log("TOOL EVENT:", ev);
+      },
+
       onDone: () => {
         clearUXTimers();
-        setIsLoading(false);
+        safeSetIsLoading(false);
 
         if (assistantText.trim().length === 0) {
           const fallback =
@@ -131,10 +168,11 @@ export default function Chat() {
               ? "היי! כתוב/י שם תרופה (או חומר פעיל) ואשמח לשתף מידע עובדתי מהעלון (שימושים, מינון, אזהרות, מרשם/ללא מרשם)."
               : "Hi! Tell me the medication name (or active ingredient) and I’ll share factual leaflet info (uses, dosage directions, warnings, prescription requirement).";
 
-          setChatMessages((curr) => {
+          safeSetChatMessages((curr) => {
             const copy = [...curr];
             const idx = copy.findIndex((m) => m.id === assistantId);
             if (idx === -1) return copy;
+
             copy[idx] = {
               id: assistantId,
               role: "assistant",
@@ -144,19 +182,24 @@ export default function Chat() {
           });
         }
       },
+
       onError: (err) => {
+        // ✅ ignore abort errors
+        if (controller.signal.aborted) return;
+
         clearUXTimers();
-        setIsLoading(false);
+        safeSetIsLoading(false);
 
         const prefix =
           reqLocale === "he"
             ? "סליחה - משהו השתבש."
             : "Sorry - something went wrong.";
 
-        setChatMessages((curr) => {
+        safeSetChatMessages((curr) => {
           const copy = [...curr];
           const idx = copy.findIndex((m) => m.id === assistantId);
           if (idx === -1) return copy;
+
           copy[idx] = {
             id: assistantId,
             role: "assistant",
@@ -166,6 +209,8 @@ export default function Chat() {
         });
       },
     });
+
+    streamAbortRef.current = controller;
   };
 
   return (

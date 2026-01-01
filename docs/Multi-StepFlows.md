@@ -14,9 +14,9 @@ Provide **factual information** about a medication, including:
 
 ### Example User Requests
 
-- “What is Advil?”
-- “מה החומר הפעיל באקמול?”
-- “How do you use paracetamol?”
+- "What is Advil?"
+- "מה החומר הפעיל באקמול?"
+- "How do you use paracetamol?"
 
 ### Step-by-Step Sequence
 
@@ -53,9 +53,9 @@ Clearly confirm whether a medication **requires a prescription**.
 
 ### Example User Requests
 
-- “Does Advil require a prescription?”
-- “צריך מרשם לאקמול?”
-- “Is ibuprofen OTC?”
+- "Does Advil require a prescription?"
+- "צריך מרשם לאקמול?"
+- "Is ibuprofen OTC?"
 
 ### Step-by-Step Sequence
 
@@ -64,7 +64,7 @@ Clearly confirm whether a medication **requires a prescription**.
 3. **Agent calls tool:** `check_prescription_requirement`
 4. **Tool returns** boolean Rx status.
 5. **Agent responds** with a clear factual answer:
-   - “This medication does not require a prescription.”
+   - "This medication does not require a prescription."
 
 ### Tools Used
 
@@ -86,9 +86,9 @@ Check **real-time inventory availability** and guide the user when stock is unav
 
 ### Example User Requests
 
-- “Is there Advil in Rehovot?”
-- “יש אקמול ביפו?”
-- “Is there paracetamol in NYC?”
+- "Is there Advil in Rehovot?"
+- "יש אקמול ביפו?"
+- "Is there paracetamol in NYC?"
 
 ### Step-by-Step Sequence
 
@@ -102,7 +102,7 @@ Check **real-time inventory availability** and guide the user when stock is unav
 5. **Agent responds** based on tool output:
    - If in stock → confirm availability
    - If out of stock in requested store → list nearby alternatives
-   - If city not served → state: “We don’t have stores in <city>.”
+   - If city not served → state: "We don't have stores in <city>."
 
 ### Tools Used
 

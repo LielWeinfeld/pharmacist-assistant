@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./ChatInput.css";
 
 type Props = {
@@ -24,18 +24,20 @@ export default function ChatInput({ onSend, isLoading, locale = "en" }: Props) {
   const t = UI_TEXT[locale];
 
   useEffect(() => {
-    if (!isLoading) {
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    }
-  }, [isLoading]);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, [locale]);
 
   const send = () => {
     const trimmed = text.trim();
-    if (!trimmed || isLoading) return;
+    if (!trimmed) return;
     onSend(trimmed);
     setText("");
+
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   };
 
   return (
@@ -47,7 +49,7 @@ export default function ChatInput({ onSend, isLoading, locale = "en" }: Props) {
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={t.placeholder}
-        disabled={isLoading}
+        disabled={false}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -59,9 +61,10 @@ export default function ChatInput({ onSend, isLoading, locale = "en" }: Props) {
       <button
         className="send-button"
         type="button"
-        onMouseDown={(e) => e.preventDefault()}
+        onMouseDown={(e) => e.preventDefault()} // keep focus on input
         onClick={send}
-        disabled={isLoading || text.trim().length === 0}
+        disabled={text.trim().length === 0}
+        aria-busy={isLoading}
       >
         {t.send}
       </button>

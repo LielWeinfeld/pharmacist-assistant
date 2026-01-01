@@ -176,6 +176,12 @@ export function findStoreLoose(text: string): Store | null {
   const m = t.match(/\b(10[1-4])\b/);
   if (m) return stores.find(s => s.storeNumber === m[1]) ?? null;
 
+  // Tel Aviv (city-level) → pick closest TA branch
+  if (t.includes("תל אביב") || t.includes("tel aviv") || t.includes("tlv")) {
+    return stores.sort((a, b) => a.distanceRank - b.distanceRank)[0] ?? null;
+  }
+
+
   // by location keywords
   if (t.includes("רמת אביב") || t.includes("ramat aviv")) return stores.find(s => s.storeNumber === "101") ?? null;
   if (t.includes("דיזנגוף") || t.includes("dizengoff")) return stores.find(s => s.storeNumber === "102") ?? null;

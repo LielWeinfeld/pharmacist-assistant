@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import "./ChatInput.css";
 
 type Props = {
@@ -20,7 +20,16 @@ const UI_TEXT = {
 
 export default function ChatInput({ onSend, isLoading, locale = "en" }: Props) {
   const [text, setText] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const t = UI_TEXT[locale];
+
+  useEffect(() => {
+    if (!isLoading) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [isLoading]);
 
   const send = () => {
     const trimmed = text.trim();
@@ -33,6 +42,7 @@ export default function ChatInput({ onSend, isLoading, locale = "en" }: Props) {
     <div className={`chat-input-container ${locale === "he" ? "rtl" : "ltr"}`}>
       <input
         className="chat-input"
+        ref={inputRef}
         dir={locale === "he" ? "rtl" : "ltr"}
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -49,6 +59,7 @@ export default function ChatInput({ onSend, isLoading, locale = "en" }: Props) {
       <button
         className="send-button"
         type="button"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={send}
         disabled={isLoading || text.trim().length === 0}
       >

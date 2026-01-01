@@ -1,73 +1,101 @@
-# React + TypeScript + Vite
+# AI-powered pharmacist assistant
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Description
 
-Currently, two official plugins are available:
+An AI-powered conversational pharmacist assistant designed to support customers of a retail pharmacy chain. The assistant enables users to check medication stock availability, handle prescription-related questions, and access factual medication information based exclusively on internal data sources and official consumer leaflets.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The system does **not** provide medical advice or diagnoses. Requests for medical guidance are explicitly redirected to qualified healthcare professionals.
 
-## React Compiler
+The assistant supports both English and Hebrew and delivers responses in real-time.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+All inventory and business logic is implemented outside the AI model, ensuring accuracy, safety, and deterministic behavior.
 
-## Expanding the ESLint configuration
+## Architecture
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+The system follows a layered architecture:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Frontend (React + Vite)** - Provides a chat interface and consumes streamed responses via Server-Sent Events (SSE).
+- **Backend (Node.js + Express)** - Handles request validation, language detection, and all deterministic business and inventory logic.
+- **AI Layer (OpenAI)** - Used to generate responses and present factual medication information based on database and consumer leaflets.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Getting Started
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Dependencies
+
+- Docker
+- Docker Compose
+- Node 18+ (only if running without Docker)
+- An OpenAI API key
+
+### Installing
+
+1. Clone or download the repository:
+
+```bash
+git clone https://github.com/LielWeinfeld/pharmacist-assistant.git
+cd pharmacist-assistant
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Create a `.env` file in the project root:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```.env
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-5
 ```
+
+**Note: DO NOT COMMIT the `.env` file.**
+
+### Executing program
+
+#### Run using Docker
+
+1. Make sure Docker Desktop is installed and running.
+
+2. From the project root, build and start the services:
+
+```bash
+docker compose up --build
+```
+
+3. Open the application:
+
+- http://localhost:8080
+
+#### Run without Docker
+
+1. Start the backend:
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+2. Start the frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## Help
+
+### Common issues:
+
+- **Missing API key**
+  Make sure OPENAI_API_KEY is set in the root `.env` file.
+
+- **Ports already in use**
+  Stop any services running on ports `3001` or `5173`.
+
+- **No response from assistant**
+  Verify that the backend container or server is running and streaming is not blocked by proxy.
+
+## Authors
+
+Liel Weinfeld
+
+## License
+
+This project is licensed under the MIT License.
